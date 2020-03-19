@@ -1,6 +1,9 @@
 package it.polito.tdp.indovinanumero;
 
 import java.net.URL;
+import java.security.InvalidParameterException;
+
+import it.polito.tdp.indovinanumero.model.*;
 import java.util.ResourceBundle;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -11,12 +14,7 @@ import javafx.scene.layout.HBox;
 
 public class FXMLController {
 	
-	private final int NMAX = 100;
-	private final int TMAX = 8;
-	private int segreto;
-	private int tentativiFatti;
-	private boolean inGioco = false;
-
+	
     @FXML
     private ResourceBundle resources;
 
@@ -41,60 +39,69 @@ public class FXMLController {
     @FXML
     private Button btnProva;
 
+	private Model model;
+
     @FXML
     void doNuova(ActionEvent event) {
-    	//gestione dell'inizio di una nuova partita - Logica del gioco
-    	this.segreto = (int)(Math.random() * NMAX) + 1;
-    	this.tentativiFatti = 0;
-    	this.inGioco = true; 
     	
+    	model.nuovaPartita();
     	//gestione dell'interfaccia
     	layoutTentativo.setDisable(false);
     	txtRisultato.clear();
-    	txtRimasti.setText(Integer.toString(TMAX));
+    	txtRimasti.setText(Integer.toString(model.getTMAX()));
 
     }
 
     @FXML
-    void doTentativo(ActionEvent event) {
+    void doTentativo(ActionEvent event) throws Exception {
     	//leggere l'input dell'utente
     	String ts = txtTentativi.getText();
     	int tentativo;
     	try {
     		tentativo = Integer.parseInt(ts);
     	} catch (NumberFormatException e) {
-    		txtRisultato.appendText("Devi inserire un numero!\n");
+    		scrivi("Devi inserire un numero!");
     		return;
     	}
     	
-    	this.tentativiFatti ++;
+    	int controllo=-1;
+    	try {
+    		 controllo=model.checkNumber(tentativo);
+    	}catch(IllegalStateException se ){
+    		scrivi(se.getMessage());
+    		return;
     	
-    	
-    	if(tentativo == this.segreto) {
+    	}catch (InvalidParameterException pe) {
+    		scrivi(pe.getMessage());
+    		return;
+    		
+    	}catch (TentativiEsauritiException te) {
+    		scrivi("HAI PERSO!!! Il numero segreto era: " + model.getSegreto());
+    		layoutTentativo.setDisable(true);
+    		return;
+    		
+    	}catch(NumeroUsatoException nu) {
+    		scrivi(nu.getMessage());
+    		return;
+    	}
+    	//controllo il tentativo fatto
+    	aggiornaRimanenti();
+    	if(controllo==0) {
     		//HO INDOVINATO!
-    		txtRisultato.appendText("HAI VINTO!!! Hai utilizzato " + this.tentativiFatti + " tentativi!");
+    		scrivi("HAI VINTO!!! Hai utilizzato " + model.getTeentativiFatti() + " tentativi!");
     		layoutTentativo.setDisable(true);
-    		this.inGioco = false;
-    		return;
     	}
+    	if(controllo==-1)
+    		scrivi("Tentativo troppo BASSO ");
+    	if (controllo==1)
+    		scrivi("Tentativo troppo ALTO ");
     	
-    	if(tentativiFatti == TMAX) {
-    		//Ho esaurito i tentativi -> HO PERSO
-    		txtRisultato.appendText("HAI PERSO!!! Il numero segreto era: " + this.segreto);
-    		layoutTentativo.setDisable(true);
-    		this.inGioco = false;
-    		return;
-    	}
     	
-    	//informare l'utente se il tentativo è troppo alto o troppo basso
-    	if(tentativo < this.segreto)
-    		txtRisultato.appendText("Tentativo troppo BASSO \n");
-    	else
-    		txtRisultato.appendText("Tentativo troppo ALTO \n");
-    	
-    	txtRimasti.setText(Integer.toString(TMAX-tentativiFatti));
     }
-
+    void setModel(Model model) {
+    	this.model = model;
+    }
+    
     @FXML
     void initialize() {
         assert txtRisultato != null : "fx:id=\"txtRisultato\" was not injected: check your FXML file 'Scene.fxml'.";
@@ -104,5 +111,11 @@ public class FXMLController {
         assert txtTentativi != null : "fx:id=\"txtTentativi\" was not injected: check your FXML file 'Scene.fxml'.";
         assert btnProva != null : "fx:id=\"btnProva\" was not injected: check your FXML file 'Scene.fxml'.";
 
+    }
+    private void scrivi(String string) {
+    	txtRisultato.appendText(string+"\n");
+    }
+    private void aggiornaRimanenti() {
+    	txtRimasti.setText(Integer.toString(this.model.getTMAX()-this.model.getTeentativiFatti()));
     }
 }
